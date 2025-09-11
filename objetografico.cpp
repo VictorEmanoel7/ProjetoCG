@@ -68,10 +68,10 @@ PontoGrafico::PontoGrafico(QString nome, const Ponto& p)
 /**
  * @brief Desenha o ponto na tela.
  *
- * Implementação do método virtual `desenhar`. Utiliza `QPainter::drawPoint()`
+ * Implementação do método virtual desenhar. Utiliza QPainter::drawPoint()
  * para renderizar o ponto no canvas.
  *
- * @param painter A referência ao `QPainter` que será usado para o desenho.
+ * @param painter A referência ao QPainter que será usado para o desenho.
  */
 void PontoGrafico::desenhar(QPainter& painter) const {
     if (pontos.isEmpty()) return;
@@ -108,10 +108,10 @@ RetaGrafica::RetaGrafica(QString nome, const Ponto& p1, const Ponto& p2)
 /**
  * @brief Desenha a reta na tela.
  *
- * Implementação do método virtual `desenhar`. Utiliza `QPainter::drawLine()`
+ * Implementação do método virtual desenhar. Utiliza QPainter::drawLine()
  * para renderizar a reta conectando seus dois pontos.
  *
- * @param painter A referência ao `QPainter` que será usado para o desenho.
+ * @param painter A referência ao QPainter que será usado para o desenho.
  */
 void RetaGrafica::desenhar(QPainter& painter) const {
     if (pontos.size() < 2) return;
@@ -151,22 +151,35 @@ PoligonoGrafico::PoligonoGrafico(QString nome, const QVector<Ponto>& vertices)
 }
 
 /**
- * @brief Desenha o polígono na tela.
+ * @brief Desenha o polígono na tela de forma primitiva.
  *
- * Implementação do método virtual `desenhar`. Converte a lista de `Ponto`
- * para um `QPolygon` e utiliza `QPainter::drawPolygon()` para renderizá-lo.
+ * Implementação do método virtual desenhar. Em vez de usar drawPolygon,
+ * esta versão itera sobre os vértices e desenha uma linha entre cada ponto
+ * consecutivo. Por fim, desenha uma linha do último ao primeiro vértice
+ * para fechar o polígono.
  *
- * @param painter A referência ao `QPainter` que será usado para o desenho.
+ * @param painter A referência ao QPainter que será usado para o desenho.
  */
 void PoligonoGrafico::desenhar(QPainter& painter) const {
+    // Se tivermos menos de 2 pontos, não podemos desenhar uma linha.
     if (pontos.size() < 2) return;
 
-    QPolygon qpoly;
-    for(const Ponto& p : pontos) {
-        qpoly << QPoint(p.getX(), p.getY());
+    // Desenha as linhas entre os vértices consecutivos.
+    for (int i = 0; i < pontos.size() - 1; ++i) {
+        const Ponto& p1 = pontos[i];
+        const Ponto& p2 = pontos[i+1];
+        painter.drawLine(p1.getX(), p1.getY(), p2.getX(), p2.getY());
     }
-    painter.drawPolygon(qpoly);
+
+    // Se for um polígono válido (3+ vértices), fecha o polígono desenhando
+    // uma linha do último ponto de volta para o primeiro.
+    if (pontos.size() > 2) {
+        const Ponto& pUltimo = pontos.last();
+        const Ponto& pPrimeiro = pontos.first();
+        painter.drawLine(pUltimo.getX(), pUltimo.getY(), pPrimeiro.getX(), pPrimeiro.getY());
+    }
 }
+
 
 /**
  * @brief Calcula o centro geométrico (baricentro) do polígono.
