@@ -30,9 +30,9 @@
    <widget class="QListWidget" name="listWidget_objetos">
     <property name="geometry">
      <rect>
-      <x>690</x>
+      <x>620</x>
       <y>40</y>
-      <width>91</width>
+      <width>201</width>
       <height>141</height>
      </rect>
     </property>
@@ -191,7 +191,7 @@
    <widget class="QLabel" name="label_2">
     <property name="geometry">
      <rect>
-      <x>690</x>
+      <x>680</x>
       <y>20</y>
       <width>91</width>
       <height>16</height>
@@ -323,6 +323,32 @@
     </property>
     <property name="text">
      <string>y</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_addPonto">
+    <property name="geometry">
+     <rect>
+      <x>470</x>
+      <y>160</y>
+      <width>111</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Desenhar Ponto</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_excluir">
+    <property name="geometry">
+     <rect>
+      <x>670</x>
+      <y>190</y>
+      <width>111</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Excluir Objeto</string>
     </property>
    </widget>
   </widget>

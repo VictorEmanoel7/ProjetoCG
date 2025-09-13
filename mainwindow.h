@@ -4,9 +4,10 @@
 #include <QMainWindow>
 #include <QVector>
 #include <QMouseEvent>
+#include <QListWidgetItem>
 #include "objetografico.h"
 
-enum class ModoDesenho { NENHUM, RETA, POLIGONO };
+enum class ModoDesenho { NENHUM, PONTO, RETA, POLIGONO };
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -32,9 +33,11 @@ private slots:
     void on_pushButton_addPoligono_clicked();
     void on_pushButton_finalizarDesenho_clicked();
     void on_checkBox_usarPontoEspecifico_toggled(bool checked);
+    void on_pushButton_addPonto_clicked();
+    void on_pushButton_excluir_clicked();
+    void on_listWidget_objetos_itemChanged(QListWidgetItem *item);
 
 private:
-    void popularObjetosIniciais();
     void atualizarListaObjetos();
     void resetarModoDesenho();
 

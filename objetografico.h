@@ -9,13 +9,14 @@
 
 enum class TipoObjeto { PONTO, RETA, POLIGONO };
 
+QString tipoParaString(TipoObjeto tipo);
+
 class ObjetoGrafico {
 public:
     ObjetoGrafico(QString nome, TipoObjeto tipo);
     virtual ~ObjetoGrafico() = default;
 
     virtual void desenhar(QPainter& painter) const = 0;
-
     virtual Ponto calcularCentro() const = 0;
 
     void aplicarTransformacao(const Matrix& matriz);
@@ -24,10 +25,14 @@ public:
     TipoObjeto getTipo() const;
     QVector<Ponto>& getPontos();
 
+    void setVisivel(bool visivel);
+    bool isVisivel() const;
+
 protected:
     QString nome;
     TipoObjeto tipo;
     QVector<Ponto> pontos;
+    bool visivel;
 };
 
 class PontoGrafico : public ObjetoGrafico {
@@ -37,14 +42,12 @@ public:
     Ponto calcularCentro() const override;
 };
 
-
 class RetaGrafica : public ObjetoGrafico {
 public:
     RetaGrafica(QString nome, const Ponto& p1, const Ponto& p2);
     void desenhar(QPainter& painter) const override;
     Ponto calcularCentro() const override;
 };
-
 
 class PoligonoGrafico : public ObjetoGrafico {
 public:

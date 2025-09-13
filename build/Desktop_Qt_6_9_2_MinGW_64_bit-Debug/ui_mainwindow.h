@@ -53,6 +53,8 @@ public:
     QLineEdit *lineEdit_rotacao_py;
     QLabel *label_8;
     QLabel *label_9;
+    QPushButton *pushButton_addPonto;
+    QPushButton *pushButton_excluir;
     QMenuBar *menubar;
     QStatusBar *statusbar;
 
@@ -69,7 +71,7 @@ public:
         canvasWidget->setAutoFillBackground(false);
         listWidget_objetos = new QListWidget(centralwidget);
         listWidget_objetos->setObjectName("listWidget_objetos");
-        listWidget_objetos->setGeometry(QRect(690, 40, 91, 141));
+        listWidget_objetos->setGeometry(QRect(620, 40, 201, 141));
         lineEdit_sy = new QLineEdit(centralwidget);
         lineEdit_sy->setObjectName("lineEdit_sy");
         lineEdit_sy->setGeometry(QRect(740, 280, 51, 22));
@@ -111,7 +113,7 @@ public:
         label->setGeometry(QRect(470, 20, 91, 16));
         label_2 = new QLabel(centralwidget);
         label_2->setObjectName("label_2");
-        label_2->setGeometry(QRect(690, 20, 91, 16));
+        label_2->setGeometry(QRect(680, 20, 91, 16));
         label_3 = new QLabel(centralwidget);
         label_3->setObjectName("label_3");
         label_3->setGeometry(QRect(680, 380, 41, 16));
@@ -142,6 +144,12 @@ public:
         label_9 = new QLabel(centralwidget);
         label_9->setObjectName("label_9");
         label_9->setGeometry(QRect(700, 460, 21, 16));
+        pushButton_addPonto = new QPushButton(centralwidget);
+        pushButton_addPonto->setObjectName("pushButton_addPonto");
+        pushButton_addPonto->setGeometry(QRect(470, 160, 111, 24));
+        pushButton_excluir = new QPushButton(centralwidget);
+        pushButton_excluir->setObjectName("pushButton_excluir");
+        pushButton_excluir->setGeometry(QRect(670, 190, 111, 24));
         MainWindow->setCentralWidget(centralwidget);
         menubar = new QMenuBar(MainWindow);
         menubar->setObjectName("menubar");
@@ -175,6 +183,8 @@ public:
         checkBox_usarPontoEspecifico->setText(QCoreApplication::translate("MainWindow", "Rotacionar Ponto Espec\303\255fico", nullptr));
         label_8->setText(QCoreApplication::translate("MainWindow", "x", nullptr));
         label_9->setText(QCoreApplication::translate("MainWindow", "y", nullptr));
+        pushButton_addPonto->setText(QCoreApplication::translate("MainWindow", "Desenhar Ponto", nullptr));
+        pushButton_excluir->setText(QCoreApplication::translate("MainWindow", "Excluir Objeto", nullptr));
     } // retranslateUi
 
 };

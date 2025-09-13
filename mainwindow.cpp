@@ -10,10 +10,11 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    connect(ui->listWidget_objetos, &QListWidget::itemChanged, this, &MainWindow::on_listWidget_objetos_itemChanged);
+
     ui->canvasWidget->installEventFilter(this);
     ui->canvasWidget->setMouseTracking(true);
 
-    popularObjetosIniciais();
     atualizarListaObjetos();
 
     ui->lineEdit_rotacao_px->setEnabled(false);
@@ -29,21 +30,26 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::popularObjetosIniciais() {
-    displayFile.append(new RetaGrafica("Reta 1", Ponto(50, 50), Ponto(150, 50)));
-
-    QVector<Ponto> verticesTriangulo;
-    verticesTriangulo.append(Ponto(200, 100));
-    verticesTriangulo.append(Ponto(250, 200));
-    verticesTriangulo.append(Ponto(150, 200));
-    displayFile.append(new PoligonoGrafico("Triangulo 1", verticesTriangulo));
-}
 
 void MainWindow::atualizarListaObjetos() {
+    ui->listWidget_objetos->blockSignals(true);
+
     ui->listWidget_objetos->clear();
-    for (const auto& obj : displayFile) {
-        ui->listWidget_objetos->addItem(obj->getNome());
+    for (int i = 0; i < displayFile.size(); ++i) {
+        ObjetoGrafico* obj = displayFile[i];
+
+        QListWidgetItem* item = new QListWidgetItem();
+
+        QString textoItem = QString("%1 (%2)").arg(obj->getNome()).arg(tipoParaString(obj->getTipo()));
+        item->setText(textoItem);
+
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+
+        item->setCheckState(obj->isVisivel() ? Qt::Checked : Qt::Unchecked);
+
+        ui->listWidget_objetos->addItem(item);
     }
+    ui->listWidget_objetos->blockSignals(false);
 }
 
 void MainWindow::resetarModoDesenho() {
@@ -60,7 +66,9 @@ void MainWindow::paintEvent(QPaintEvent *event) {
 
     painter.setPen(QPen(Qt::green, 2));
     for (const auto& obj : displayFile) {
-        obj->desenhar(painter);
+        if (obj->isVisivel()) {
+            obj->desenhar(painter);
+        }
     }
 
     if (!pontosTemporarios.isEmpty()) {
@@ -81,7 +89,19 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     if (obj == ui->canvasWidget && event->type() == QEvent::MouseButtonPress) {
         QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
 
-        if (modoDesenho == ModoDesenho::RETA) {
+        if (modoDesenho == ModoDesenho::PONTO) {
+            QString nome = ui->lineEdit_nomeObjeto->text();
+            if (nome.isEmpty()) {
+                nome = QString("Ponto %1").arg(displayFile.size() + 1);
+            }
+            Ponto p(mouseEvent->pos().x(), mouseEvent->pos().y());
+            displayFile.append(new PontoGrafico(nome, p));
+            atualizarListaObjetos();
+            resetarModoDesenho();
+            update();
+            return true;
+        }
+        else if (modoDesenho == ModoDesenho::RETA) {
             pontosTemporarios.append(mouseEvent->pos());
             if (pontosTemporarios.size() == 2) {
                 QString nome = ui->lineEdit_nomeObjeto->text();
@@ -91,9 +111,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
                 Ponto p1(pontosTemporarios[0].x(), pontosTemporarios[0].y());
                 Ponto p2(pontosTemporarios[1].x(), pontosTemporarios[1].y());
                 displayFile.append(new RetaGrafica(nome, p1, p2));
-
                 atualizarListaObjetos();
-
                 resetarModoDesenho();
             }
             update();
@@ -114,37 +132,28 @@ void MainWindow::on_pushButton_transladar_clicked() {
         QMessageBox::warning(this, "Aviso", "Selecione um objeto para transladar.");
         return;
     }
-
     double pX = ui->lineEdit_dx->text().toDouble();
     double pY = ui->lineEdit_dy->text().toDouble();
-
     Ponto centroAtual = displayFile[index]->calcularCentro();
     double cX = centroAtual.getX();
     double cY = centroAtual.getY();
-
     double dx = pX - cX;
     double dy = pY - cY;
-
     Matrix matrizT = Matrix::criarMatrizTranslacao(dx, dy);
     displayFile[index]->aplicarTransformacao(matrizT);
-
     update();
 }
 
 void MainWindow::on_pushButton_escalar_clicked() {
     int index = ui->listWidget_objetos->currentRow();
     if (index < 0) return;
-
     double sx = ui->lineEdit_sx->text().toDouble();
     double sy = ui->lineEdit_sy->text().toDouble();
-
     Ponto centro = displayFile[index]->calcularCentro();
-
     Matrix T1 = Matrix::criarMatrizTranslacao(-centro.getX(), -centro.getY());
     Matrix S = Matrix::criarMatrizEscala(sx, sy);
     Matrix T2 = Matrix::criarMatrizTranslacao(centro.getX(), centro.getY());
     Matrix matrizFinal = T2 * S * T1;
-
     displayFile[index]->aplicarTransformacao(matrizFinal);
     update();
 }
@@ -156,16 +165,12 @@ void MainWindow::on_pushButton_rotacionar_clicked()
         QMessageBox::warning(this, "Aviso", "Selecione um objeto para rotacionar.");
         return;
     }
-
     double angulo = ui->lineEdit_angulo->text().toDouble();
     Ponto pivo;
-
     if (ui->checkBox_usarPontoEspecifico->isChecked()) {
-
         bool okPx, okPy;
         double px = ui->lineEdit_rotacao_px->text().toDouble(&okPx);
         double py = ui->lineEdit_rotacao_py->text().toDouble(&okPy);
-
         if (!okPx || !okPy) {
             QMessageBox::warning(this, "Erro de Entrada", "Por favor, insira coordenadas Px e Py válidas.");
             return;
@@ -174,14 +179,19 @@ void MainWindow::on_pushButton_rotacionar_clicked()
     } else {
         pivo = displayFile[index]->calcularCentro();
     }
-
     Matrix T1 = Matrix::criarMatrizTranslacao(-pivo.getX(), -pivo.getY());
     Matrix R = Matrix::criarMatrizRotacao(angulo);
     Matrix T2 = Matrix::criarMatrizTranslacao(pivo.getX(), pivo.getY());
     Matrix matrizFinal = T2 * R * T1;
-
     displayFile[index]->aplicarTransformacao(matrizFinal);
     update();
+}
+
+void MainWindow::on_pushButton_addPonto_clicked()
+{
+    modoDesenho = ModoDesenho::PONTO;
+    pontosTemporarios.clear();
+    ui->statusbar->showMessage("Modo 'Desenhar Ponto' ativado. Clique em 1 ponto no canvas.");
 }
 
 void MainWindow::on_pushButton_addReta_clicked()
@@ -210,9 +220,7 @@ void MainWindow::on_pushButton_finalizarDesenho_clicked()
             vertices.append(Ponto(qp.x(), qp.y()));
         }
         displayFile.append(new PoligonoGrafico(nome, vertices));
-
         atualizarListaObjetos();
-
         resetarModoDesenho();
     } else {
         QMessageBox::warning(this, "Aviso", "Para finalizar um polígono, você precisa de pelo menos 3 pontos.");
@@ -228,4 +236,35 @@ void MainWindow::on_checkBox_usarPontoEspecifico_toggled(bool checked)
     if (checked) {
         ui->lineEdit_rotacao_px->setFocus();
     }
+}
+
+void MainWindow::on_pushButton_excluir_clicked()
+{
+    int index = ui->listWidget_objetos->currentRow();
+
+    if (index < 0) {
+        QMessageBox::warning(this, "Aviso", "Selecione um objeto para excluir.");
+        return;
+    }
+
+    delete displayFile[index];
+
+    displayFile.removeAt(index);
+
+    atualizarListaObjetos();
+
+    update();
+}
+
+void MainWindow::on_listWidget_objetos_itemChanged(QListWidgetItem *item)
+{
+    int index = ui->listWidget_objetos->row(item);
+
+    if (index < 0 || index >= displayFile.size()) return;
+
+    ObjetoGrafico* obj = displayFile[index];
+    bool isChecked = (item->checkState() == Qt::Checked);
+    obj->setVisivel(isChecked);
+
+    update();
 }

@@ -47,7 +47,12 @@ template <> constexpr inline auto MainWindow::qt_create_metaobjectdata<qt_meta_t
         "on_pushButton_addPoligono_clicked",
         "on_pushButton_finalizarDesenho_clicked",
         "on_checkBox_usarPontoEspecifico_toggled",
-        "checked"
+        "checked",
+        "on_pushButton_addPonto_clicked",
+        "on_pushButton_excluir_clicked",
+        "on_listWidget_objetos_itemChanged",
+        "QListWidgetItem*",
+        "item"
     };
 
     QtMocHelpers::UintData qt_methods {
@@ -66,6 +71,14 @@ template <> constexpr inline auto MainWindow::qt_create_metaobjectdata<qt_meta_t
         // Slot 'on_checkBox_usarPontoEspecifico_toggled'
         QtMocHelpers::SlotData<void(bool)>(8, 2, QMC::AccessPrivate, QMetaType::Void, {{
             { QMetaType::Bool, 9 },
+        }}),
+        // Slot 'on_pushButton_addPonto_clicked'
+        QtMocHelpers::SlotData<void()>(10, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'on_pushButton_excluir_clicked'
+        QtMocHelpers::SlotData<void()>(11, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'on_listWidget_objetos_itemChanged'
+        QtMocHelpers::SlotData<void(QListWidgetItem *)>(12, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 13, 14 },
         }}),
     };
     QtMocHelpers::UintData qt_properties {
@@ -97,6 +110,9 @@ void MainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         case 4: _t->on_pushButton_addPoligono_clicked(); break;
         case 5: _t->on_pushButton_finalizarDesenho_clicked(); break;
         case 6: _t->on_checkBox_usarPontoEspecifico_toggled((*reinterpret_cast< std::add_pointer_t<bool>>(_a[1]))); break;
+        case 7: _t->on_pushButton_addPonto_clicked(); break;
+        case 8: _t->on_pushButton_excluir_clicked(); break;
+        case 9: _t->on_listWidget_objetos_itemChanged((*reinterpret_cast< std::add_pointer_t<QListWidgetItem*>>(_a[1]))); break;
         default: ;
         }
     }
@@ -121,14 +137,14 @@ int MainWindow::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 7)
+        if (_id < 10)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 7;
+        _id -= 10;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 7)
+        if (_id < 10)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 7;
+        _id -= 10;
     }
     return _id;
 }
