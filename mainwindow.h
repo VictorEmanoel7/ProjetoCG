@@ -6,6 +6,7 @@
 #include <QMouseEvent>
 #include <QListWidgetItem>
 #include "objetografico.h"
+#include "transformador.h"
 
 enum class ModoDesenho { NENHUM, PONTO, RETA, POLIGONO };
 
@@ -36,6 +37,7 @@ private slots:
     void on_pushButton_addPonto_clicked();
     void on_pushButton_excluir_clicked();
     void on_listWidget_objetos_itemChanged(QListWidgetItem *item);
+    void on_pushButton_aplicar_wv_clicked();
 
 private:
     void atualizarListaObjetos();
@@ -45,5 +47,6 @@ private:
     QVector<ObjetoGrafico*> displayFile;
     ModoDesenho modoDesenho;
     QVector<QPoint> pontosTemporarios;
+    TransformadorCoordenadas* transformador;
 };
 #endif // MAINWINDOW_H

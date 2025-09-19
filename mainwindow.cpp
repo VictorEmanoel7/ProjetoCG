@@ -19,6 +19,21 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->lineEdit_rotacao_px->setEnabled(false);
     ui->lineEdit_rotacao_py->setEnabled(false);
+
+    transformador = new TransformadorCoordenadas();
+    int v_width = ui->canvasWidget->width();
+    int v_height = ui->canvasWidget->height();
+    transformador->setWindow(0, 0, v_width, v_height);
+    transformador->setViewport(0, 0, v_width, v_height);
+
+    ui->lineEdit_w_xmin->setText("0");
+    ui->lineEdit_w_ymin->setText("0");
+    ui->lineEdit_w_xmax->setText(QString::number(v_width));
+    ui->lineEdit_w_ymax->setText(QString::number(v_height));
+    ui->lineEdit_v_xmin->setText("0");
+    ui->lineEdit_v_ymin->setText("0");
+    ui->lineEdit_v_xmax->setText(QString::number(v_width));
+    ui->lineEdit_v_ymax->setText(QString::number(v_height));
 }
 
 MainWindow::~MainWindow()
@@ -27,6 +42,7 @@ MainWindow::~MainWindow()
         delete obj;
     }
     displayFile.clear();
+    delete transformador;
     delete ui;
 }
 
@@ -65,9 +81,19 @@ void MainWindow::paintEvent(QPaintEvent *event) {
     painter.setClipRect(ui->canvasWidget->geometry());
 
     painter.setPen(QPen(Qt::green, 2));
-    for (const auto& obj : displayFile) {
-        if (obj->isVisivel()) {
-            obj->desenhar(painter);
+
+    Matrix T_wv = transformador->getTransformacao();
+
+    for (const auto& objOriginal : displayFile) {
+        if (objOriginal->isVisivel()) {
+
+            ObjetoGrafico* objCopia = objOriginal->clone();
+
+            objCopia->aplicarTransformacao(T_wv);
+
+            objCopia->desenhar(painter);
+
+            delete objCopia;
         }
     }
 
@@ -265,6 +291,25 @@ void MainWindow::on_listWidget_objetos_itemChanged(QListWidgetItem *item)
     ObjetoGrafico* obj = displayFile[index];
     bool isChecked = (item->checkState() == Qt::Checked);
     obj->setVisivel(isChecked);
+
+    update();
+}
+
+void MainWindow::on_pushButton_aplicar_wv_clicked()
+{
+
+    double w_xmin = ui->lineEdit_w_xmin->text().toDouble();
+    double w_ymin = ui->lineEdit_w_ymin->text().toDouble();
+    double w_xmax = ui->lineEdit_w_xmax->text().toDouble();
+    double w_ymax = ui->lineEdit_w_ymax->text().toDouble();
+
+    int v_xmin = ui->lineEdit_v_xmin->text().toInt();
+    int v_ymin = ui->lineEdit_v_ymin->text().toInt();
+    int v_xmax = ui->lineEdit_v_xmax->text().toInt();
+    int v_ymax = ui->lineEdit_v_ymax->text().toInt();
+
+    transformador->setWindow(w_xmin, w_ymin, w_xmax, w_ymax);
+    transformador->setViewport(v_xmin, v_ymin, v_xmax, v_ymax);
 
     update();
 }

@@ -13,13 +13,15 @@ SOURCES += \
     mainwindow.cpp \
     matrix.cpp \
     objetografico.cpp \
-    ponto.cpp
+    ponto.cpp \
+    transformador.cpp
 
 HEADERS += \
     mainwindow.h \
     matrix.h \
     objetografico.h \
-    ponto.h
+    ponto.h \
+    transformador.h
 
 FORMS += \
     mainwindow.ui

@@ -19,6 +19,8 @@ public:
     virtual void desenhar(QPainter& painter) const = 0;
     virtual Ponto calcularCentro() const = 0;
 
+    virtual ObjetoGrafico* clone() const = 0;
+
     void aplicarTransformacao(const Matrix& matriz);
 
     QString getNome() const;
@@ -40,6 +42,7 @@ public:
     PontoGrafico(QString nome, const Ponto& p);
     void desenhar(QPainter& painter) const override;
     Ponto calcularCentro() const override;
+    ObjetoGrafico* clone() const override { return new PontoGrafico(*this); }
 };
 
 class RetaGrafica : public ObjetoGrafico {
@@ -47,6 +50,7 @@ public:
     RetaGrafica(QString nome, const Ponto& p1, const Ponto& p2);
     void desenhar(QPainter& painter) const override;
     Ponto calcularCentro() const override;
+    ObjetoGrafico* clone() const override { return new RetaGrafica(*this); }
 };
 
 class PoligonoGrafico : public ObjetoGrafico {
@@ -54,6 +58,7 @@ public:
     PoligonoGrafico(QString nome, const QVector<Ponto>& vertices);
     void desenhar(QPainter& painter) const override;
     Ponto calcularCentro() const override;
+    ObjetoGrafico* clone() const override { return new PoligonoGrafico(*this); }
 };
 
 #endif // OBJETOGRAFICO_H
