@@ -7,6 +7,8 @@
 #include <QListWidgetItem>
 #include "objetografico.h"
 #include "transformador.h"
+#include "windowgrafica.h"
+#include "clipping.h"
 
 enum class ModoDesenho { NENHUM, PONTO, RETA, POLIGONO };
 
@@ -48,5 +50,8 @@ private:
     ModoDesenho modoDesenho;
     QVector<QPoint> pontosTemporarios;
     TransformadorCoordenadas* transformador;
+
+    WindowGrafica* a_window;
+    Clipping* clipper;
 };
 #endif // MAINWINDOW_H

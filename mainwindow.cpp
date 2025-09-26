@@ -15,25 +15,38 @@ MainWindow::MainWindow(QWidget *parent)
     ui->canvasWidget->installEventFilter(this);
     ui->canvasWidget->setMouseTracking(true);
 
-    atualizarListaObjetos();
-
     ui->lineEdit_rotacao_px->setEnabled(false);
     ui->lineEdit_rotacao_py->setEnabled(false);
 
-    transformador = new TransformadorCoordenadas();
-    int v_width = ui->canvasWidget->width();
-    int v_height = ui->canvasWidget->height();
-    transformador->setWindow(0, 0, v_width, v_height);
-    transformador->setViewport(0, 0, v_width, v_height);
+    int canvas_width = ui->canvasWidget->width();
+    int canvas_height = ui->canvasWidget->height();
+    int padding = 50;
+    double w_xmin = padding;
+    double w_ymin = padding;
+    double w_xmax = canvas_width - padding;
+    double w_ymax = canvas_height - padding;
 
-    ui->lineEdit_w_xmin->setText("0");
-    ui->lineEdit_w_ymin->setText("0");
-    ui->lineEdit_w_xmax->setText(QString::number(v_width));
-    ui->lineEdit_w_ymax->setText(QString::number(v_height));
-    ui->lineEdit_v_xmin->setText("0");
-    ui->lineEdit_v_ymin->setText("0");
-    ui->lineEdit_v_xmax->setText(QString::number(v_width));
-    ui->lineEdit_v_ymax->setText(QString::number(v_height));
+    a_window = new WindowGrafica("Window", Ponto(w_xmin, w_ymin), Ponto(w_xmax, w_ymax));
+    a_window->setVisivel(true);
+
+    displayFile.prepend(a_window);
+
+    transformador = new TransformadorCoordenadas();
+    transformador->setViewport(w_xmin, w_ymin, w_xmax, w_ymax);
+
+    LimitesWindow limitesIniciais = a_window->getLimites();
+    ui->lineEdit_w_xmin->setText(QString::number(limitesIniciais.xmin));
+    ui->lineEdit_w_ymin->setText(QString::number(limitesIniciais.ymin));
+    ui->lineEdit_w_xmax->setText(QString::number(limitesIniciais.xmax));
+    ui->lineEdit_w_ymax->setText(QString::number(limitesIniciais.ymax));
+    ui->lineEdit_v_xmin->setText(QString::number(w_xmin));
+    ui->lineEdit_v_ymin->setText(QString::number(w_ymin));
+    ui->lineEdit_v_xmax->setText(QString::number(w_xmax));
+    ui->lineEdit_v_ymax->setText(QString::number(w_ymax));
+
+    clipper = new Clipping();
+
+    atualizarListaObjetos();
 }
 
 MainWindow::~MainWindow()
@@ -43,9 +56,9 @@ MainWindow::~MainWindow()
     }
     displayFile.clear();
     delete transformador;
+    delete clipper;
     delete ui;
 }
-
 
 void MainWindow::atualizarListaObjetos() {
     ui->listWidget_objetos->blockSignals(true);
@@ -53,16 +66,11 @@ void MainWindow::atualizarListaObjetos() {
     ui->listWidget_objetos->clear();
     for (int i = 0; i < displayFile.size(); ++i) {
         ObjetoGrafico* obj = displayFile[i];
-
         QListWidgetItem* item = new QListWidgetItem();
-
         QString textoItem = QString("%1 (%2)").arg(obj->getNome()).arg(tipoParaString(obj->getTipo()));
         item->setText(textoItem);
-
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-
         item->setCheckState(obj->isVisivel() ? Qt::Checked : Qt::Unchecked);
-
         ui->listWidget_objetos->addItem(item);
     }
     ui->listWidget_objetos->blockSignals(false);
@@ -79,19 +87,52 @@ void MainWindow::paintEvent(QPaintEvent *event) {
     Q_UNUSED(event);
     QPainter painter(this);
     painter.setClipRect(ui->canvasWidget->geometry());
-
     painter.setPen(QPen(Qt::green, 2));
 
+    LimitesWindow limites = a_window->getLimites();
+    transformador->setWindow(limites.xmin, limites.ymin, limites.xmax, limites.ymax);
     Matrix T_wv = transformador->getTransformacao();
 
     for (const auto& objOriginal : displayFile) {
         if (objOriginal->isVisivel()) {
-
             ObjetoGrafico* objCopia = objOriginal->clone();
 
-            objCopia->aplicarTransformacao(T_wv);
+            RetaGrafica* reta = dynamic_cast<RetaGrafica*>(objCopia);
+            PoligonoGrafico* poligono = dynamic_cast<PoligonoGrafico*>(objCopia);
 
-            objCopia->desenhar(painter);
+            if (reta) {
+                Ponto p1 = reta->getPontos()[0];
+                Ponto p2 = reta->getPontos()[1];
+
+                if (clipper->clipReta(p1, p2, limites)) {
+                    reta->getPontos()[0] = p1;
+                    reta->getPontos()[1] = p2;
+
+                    objCopia->aplicarTransformacao(T_wv);
+                    objCopia->desenhar(painter);
+                }
+            } else if (poligono && poligono != static_cast<ObjetoGrafico*>(a_window)) {
+                QVector<Ponto>& vertices = poligono->getPontos();
+                if (vertices.size() >= 2) {
+                    for (int i = 0; i < vertices.size(); ++i) {
+                        Ponto p1 = vertices[i];
+                        Ponto p2 = vertices[(i + 1) % vertices.size()];
+
+                        if (clipper->clipReta(p1, p2, limites)) {
+                            Matrix m_p1 = p1;
+                            Matrix m_p2 = p2;
+                            Matrix p1_transformado = T_wv * m_p1;
+                            Matrix p2_transformado = T_wv * m_p2;
+
+                            painter.drawLine(p1_transformado.at(0,0), p1_transformado.at(1,0),
+                                             p2_transformado.at(0,0), p2_transformado.at(1,0));
+                        }
+                    }
+                }
+            } else {
+                objCopia->aplicarTransformacao(T_wv);
+                objCopia->desenhar(painter);
+            }
 
             delete objCopia;
         }
@@ -158,29 +199,51 @@ void MainWindow::on_pushButton_transladar_clicked() {
         QMessageBox::warning(this, "Aviso", "Selecione um objeto para transladar.");
         return;
     }
-    double pX = ui->lineEdit_dx->text().toDouble();
-    double pY = ui->lineEdit_dy->text().toDouble();
-    Ponto centroAtual = displayFile[index]->calcularCentro();
-    double cX = centroAtual.getX();
-    double cY = centroAtual.getY();
-    double dx = pX - cX;
-    double dy = pY - cY;
-    Matrix matrizT = Matrix::criarMatrizTranslacao(dx, dy);
-    displayFile[index]->aplicarTransformacao(matrizT);
+
+    double dx = ui->lineEdit_dx->text().toDouble();
+    double dy = ui->lineEdit_dy->text().toDouble();
+
+    if (index == 0) {
+        Matrix matrizT_inversa = Matrix::criarMatrizTranslacao(-dx, -dy);
+        for (int i = 1; i < displayFile.size(); ++i) {
+            displayFile[i]->aplicarTransformacao(matrizT_inversa);
+        }
+    } else {
+        Matrix matrizT = Matrix::criarMatrizTranslacao(dx, dy);
+        displayFile[index]->aplicarTransformacao(matrizT);
+    }
     update();
 }
 
 void MainWindow::on_pushButton_escalar_clicked() {
     int index = ui->listWidget_objetos->currentRow();
     if (index < 0) return;
+
     double sx = ui->lineEdit_sx->text().toDouble();
     double sy = ui->lineEdit_sy->text().toDouble();
-    Ponto centro = displayFile[index]->calcularCentro();
-    Matrix T1 = Matrix::criarMatrizTranslacao(-centro.getX(), -centro.getY());
-    Matrix S = Matrix::criarMatrizEscala(sx, sy);
-    Matrix T2 = Matrix::criarMatrizTranslacao(centro.getX(), centro.getY());
-    Matrix matrizFinal = T2 * S * T1;
-    displayFile[index]->aplicarTransformacao(matrizFinal);
+
+    if (index == 0) {
+        if (sx == 0 || sy == 0) {
+            QMessageBox::warning(this, "Aviso", "Fator de escala não pode ser zero.");
+            return;
+        }
+        Ponto centro = a_window->calcularCentro();
+        Matrix T1 = Matrix::criarMatrizTranslacao(-centro.getX(), -centro.getY());
+        Matrix S_inversa = Matrix::criarMatrizEscala(1.0/sx, 1.0/sy);
+        Matrix T2 = Matrix::criarMatrizTranslacao(centro.getX(), centro.getY());
+        Matrix matrizFinal_inversa = T2 * S_inversa * T1;
+
+        for (int i = 1; i < displayFile.size(); ++i) {
+            displayFile[i]->aplicarTransformacao(matrizFinal_inversa);
+        }
+    } else {
+        Ponto centro = displayFile[index]->calcularCentro();
+        Matrix T1 = Matrix::criarMatrizTranslacao(-centro.getX(), -centro.getY());
+        Matrix S = Matrix::criarMatrizEscala(sx, sy);
+        Matrix T2 = Matrix::criarMatrizTranslacao(centro.getX(), centro.getY());
+        Matrix matrizFinal = T2 * S * T1;
+        displayFile[index]->aplicarTransformacao(matrizFinal);
+    }
     update();
 }
 
@@ -192,24 +255,37 @@ void MainWindow::on_pushButton_rotacionar_clicked()
         return;
     }
     double angulo = ui->lineEdit_angulo->text().toDouble();
-    Ponto pivo;
-    if (ui->checkBox_usarPontoEspecifico->isChecked()) {
-        bool okPx, okPy;
-        double px = ui->lineEdit_rotacao_px->text().toDouble(&okPx);
-        double py = ui->lineEdit_rotacao_py->text().toDouble(&okPy);
-        if (!okPx || !okPy) {
-            QMessageBox::warning(this, "Erro de Entrada", "Por favor, insira coordenadas Px e Py válidas.");
-            return;
+
+    if (index == 0) {
+        Ponto pivo = a_window->calcularCentro();
+        Matrix T1 = Matrix::criarMatrizTranslacao(-pivo.getX(), -pivo.getY());
+        Matrix R_inversa = Matrix::criarMatrizRotacao(-angulo);
+        Matrix T2 = Matrix::criarMatrizTranslacao(pivo.getX(), pivo.getY());
+        Matrix matrizFinal_inversa = T2 * R_inversa * T1;
+
+        for (int i = 1; i < displayFile.size(); ++i) {
+            displayFile[i]->aplicarTransformacao(matrizFinal_inversa);
         }
-        pivo = Ponto(px, py);
     } else {
-        pivo = displayFile[index]->calcularCentro();
+        Ponto pivo;
+        if (ui->checkBox_usarPontoEspecifico->isChecked()) {
+            bool okPx, okPy;
+            double px = ui->lineEdit_rotacao_px->text().toDouble(&okPx);
+            double py = ui->lineEdit_rotacao_py->text().toDouble(&okPy);
+            if (!okPx || !okPy) {
+                QMessageBox::warning(this, "Erro de Entrada", "Por favor, insira coordenadas Px e Py válidas.");
+                return;
+            }
+            pivo = Ponto(px, py);
+        } else {
+            pivo = displayFile[index]->calcularCentro();
+        }
+        Matrix T1 = Matrix::criarMatrizTranslacao(-pivo.getX(), -pivo.getY());
+        Matrix R = Matrix::criarMatrizRotacao(angulo);
+        Matrix T2 = Matrix::criarMatrizTranslacao(pivo.getX(), pivo.getY());
+        Matrix matrizFinal = T2 * R * T1;
+        displayFile[index]->aplicarTransformacao(matrizFinal);
     }
-    Matrix T1 = Matrix::criarMatrizTranslacao(-pivo.getX(), -pivo.getY());
-    Matrix R = Matrix::criarMatrizRotacao(angulo);
-    Matrix T2 = Matrix::criarMatrizTranslacao(pivo.getX(), pivo.getY());
-    Matrix matrizFinal = T2 * R * T1;
-    displayFile[index]->aplicarTransformacao(matrizFinal);
     update();
 }
 
@@ -272,20 +348,20 @@ void MainWindow::on_pushButton_excluir_clicked()
         QMessageBox::warning(this, "Aviso", "Selecione um objeto para excluir.");
         return;
     }
+    if (index == 0) {
+        QMessageBox::warning(this, "Aviso", "Não é possível excluir a window.");
+        return;
+    }
 
     delete displayFile[index];
-
     displayFile.removeAt(index);
-
     atualizarListaObjetos();
-
     update();
 }
 
 void MainWindow::on_listWidget_objetos_itemChanged(QListWidgetItem *item)
 {
     int index = ui->listWidget_objetos->row(item);
-
     if (index < 0 || index >= displayFile.size()) return;
 
     ObjetoGrafico* obj = displayFile[index];
@@ -297,18 +373,18 @@ void MainWindow::on_listWidget_objetos_itemChanged(QListWidgetItem *item)
 
 void MainWindow::on_pushButton_aplicar_wv_clicked()
 {
-
     double w_xmin = ui->lineEdit_w_xmin->text().toDouble();
     double w_ymin = ui->lineEdit_w_ymin->text().toDouble();
     double w_xmax = ui->lineEdit_w_xmax->text().toDouble();
     double w_ymax = ui->lineEdit_w_ymax->text().toDouble();
+
+    a_window->atualizarLimites(w_xmin, w_ymin, w_xmax, w_ymax);
 
     int v_xmin = ui->lineEdit_v_xmin->text().toInt();
     int v_ymin = ui->lineEdit_v_ymin->text().toInt();
     int v_xmax = ui->lineEdit_v_xmax->text().toInt();
     int v_ymax = ui->lineEdit_v_ymax->text().toInt();
 
-    transformador->setWindow(w_xmin, w_ymin, w_xmax, w_ymax);
     transformador->setViewport(v_xmin, v_ymin, v_xmax, v_ymax);
 
     update();
