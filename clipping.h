@@ -17,6 +17,7 @@ public:
     };
 
     bool clipReta(Ponto& p1, Ponto& p2, const LimitesWindow& limites) const;
+    bool clipPonto(const Ponto& p, const LimitesWindow& limites) const;
 
 private:
     int computeCode(const Ponto& p, const LimitesWindow& limites) const;

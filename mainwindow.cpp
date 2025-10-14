@@ -83,6 +83,9 @@ void MainWindow::resetarModoDesenho() {
     update();
 }
 
+// ==========================================================
+// ============ FUNÇÃO paintEvent MODIFICADA ================
+// ==========================================================
 void MainWindow::paintEvent(QPaintEvent *event) {
     Q_UNUSED(event);
     QPainter painter(this);
@@ -97,10 +100,18 @@ void MainWindow::paintEvent(QPaintEvent *event) {
         if (objOriginal->isVisivel()) {
             ObjetoGrafico* objCopia = objOriginal->clone();
 
+            // Tipos de objetos
+            PontoGrafico* ponto = dynamic_cast<PontoGrafico*>(objCopia);
             RetaGrafica* reta = dynamic_cast<RetaGrafica*>(objCopia);
             PoligonoGrafico* poligono = dynamic_cast<PoligonoGrafico*>(objCopia);
 
-            if (reta) {
+            if (ponto) { // Lógica de clipping para Ponto
+                Ponto p = ponto->getPontos()[0];
+                if (clipper->clipPonto(p, limites)) {
+                    objCopia->aplicarTransformacao(T_wv);
+                    objCopia->desenhar(painter);
+                }
+            } else if (reta) { // Lógica existente para Reta
                 Ponto p1 = reta->getPontos()[0];
                 Ponto p2 = reta->getPontos()[1];
 
@@ -111,7 +122,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
                     objCopia->aplicarTransformacao(T_wv);
                     objCopia->desenhar(painter);
                 }
-            } else if (poligono && poligono != static_cast<ObjetoGrafico*>(a_window)) {
+            } else if (poligono && poligono != static_cast<ObjetoGrafico*>(a_window)) { // Lógica existente para Polígono
                 QVector<Ponto>& vertices = poligono->getPontos();
                 if (vertices.size() >= 2) {
                     for (int i = 0; i < vertices.size(); ++i) {
@@ -129,7 +140,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
                         }
                     }
                 }
-            } else {
+            } else { // Demais objetos (como a própria window)
                 objCopia->aplicarTransformacao(T_wv);
                 objCopia->desenhar(painter);
             }
@@ -138,6 +149,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
         }
     }
 
+    // Lógica para desenhar pontos temporários (inalterada)
     if (!pontosTemporarios.isEmpty()) {
         painter.setPen(QPen(Qt::yellow, 3, Qt::DashLine));
         for(const QPoint& p : pontosTemporarios) {
@@ -150,6 +162,9 @@ void MainWindow::paintEvent(QPaintEvent *event) {
         }
     }
 }
+// ==========================================================
+// ==========================================================
+
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {

@@ -59,3 +59,11 @@ bool Clipping::clipReta(Ponto& p1, Ponto& p2, const LimitesWindow& limites) cons
     }
     return aceito;
 }
+
+// ==========================================================
+// ===== FUNÇÃO ADICIONADA PARA O CLIPPING DE PONTOS ========
+// ==========================================================
+bool Clipping::clipPonto(const Ponto& p, const LimitesWindow& limites) const {
+    // Um ponto é visível se e somente se seu código for INSIDE (0)
+    return computeCode(p, limites) == INSIDE;
+}
