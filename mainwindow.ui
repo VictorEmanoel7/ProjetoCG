@@ -574,6 +574,19 @@
      <string>Aplicar</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="pushButton_carregarDesenho">
+    <property name="geometry">
+     <rect>
+      <x>230</x>
+      <y>460</y>
+      <width>111</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Carregar Desenho</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">

@@ -2,6 +2,9 @@
 #include "ui_mainwindow.h"
 #include <QPainter>
 #include <QMessageBox>
+#include <QFileDialog>
+#include <QTextStream>
+#include <QRegularExpression>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -11,6 +14,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     connect(ui->listWidget_objetos, &QListWidget::itemChanged, this, &MainWindow::on_listWidget_objetos_itemChanged);
+    connect(ui->pushButton_carregarDesenho, &QPushButton::clicked, this, &MainWindow::on_pushButton_carregarDesenho_clicked);
 
     ui->canvasWidget->installEventFilter(this);
     ui->canvasWidget->setMouseTracking(true);
@@ -83,9 +87,6 @@ void MainWindow::resetarModoDesenho() {
     update();
 }
 
-// ==========================================================
-// ============ FUNÇÃO paintEvent MODIFICADA ================
-// ==========================================================
 void MainWindow::paintEvent(QPaintEvent *event) {
     Q_UNUSED(event);
     QPainter painter(this);
@@ -100,29 +101,27 @@ void MainWindow::paintEvent(QPaintEvent *event) {
         if (objOriginal->isVisivel()) {
             ObjetoGrafico* objCopia = objOriginal->clone();
 
-            // Tipos de objetos
             PontoGrafico* ponto = dynamic_cast<PontoGrafico*>(objCopia);
             RetaGrafica* reta = dynamic_cast<RetaGrafica*>(objCopia);
             PoligonoGrafico* poligono = dynamic_cast<PoligonoGrafico*>(objCopia);
 
-            if (ponto) { // Lógica de clipping para Ponto
+            if (ponto) {
                 Ponto p = ponto->getPontos()[0];
                 if (clipper->clipPonto(p, limites)) {
                     objCopia->aplicarTransformacao(T_wv);
                     objCopia->desenhar(painter);
                 }
-            } else if (reta) { // Lógica existente para Reta
+            } else if (reta) {
                 Ponto p1 = reta->getPontos()[0];
                 Ponto p2 = reta->getPontos()[1];
 
                 if (clipper->clipReta(p1, p2, limites)) {
                     reta->getPontos()[0] = p1;
                     reta->getPontos()[1] = p2;
-
                     objCopia->aplicarTransformacao(T_wv);
                     objCopia->desenhar(painter);
                 }
-            } else if (poligono && poligono != static_cast<ObjetoGrafico*>(a_window)) { // Lógica existente para Polígono
+            } else if (poligono && poligono != static_cast<ObjetoGrafico*>(a_window)) {
                 QVector<Ponto>& vertices = poligono->getPontos();
                 if (vertices.size() >= 2) {
                     for (int i = 0; i < vertices.size(); ++i) {
@@ -134,22 +133,19 @@ void MainWindow::paintEvent(QPaintEvent *event) {
                             Matrix m_p2 = p2;
                             Matrix p1_transformado = T_wv * m_p1;
                             Matrix p2_transformado = T_wv * m_p2;
-
                             painter.drawLine(p1_transformado.at(0,0), p1_transformado.at(1,0),
                                              p2_transformado.at(0,0), p2_transformado.at(1,0));
                         }
                     }
                 }
-            } else { // Demais objetos (como a própria window)
+            } else {
                 objCopia->aplicarTransformacao(T_wv);
                 objCopia->desenhar(painter);
             }
-
             delete objCopia;
         }
     }
 
-    // Lógica para desenhar pontos temporários (inalterada)
     if (!pontosTemporarios.isEmpty()) {
         painter.setPen(QPen(Qt::yellow, 3, Qt::DashLine));
         for(const QPoint& p : pontosTemporarios) {
@@ -162,9 +158,6 @@ void MainWindow::paintEvent(QPaintEvent *event) {
         }
     }
 }
-// ==========================================================
-// ==========================================================
-
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
@@ -402,5 +395,54 @@ void MainWindow::on_pushButton_aplicar_wv_clicked()
 
     transformador->setViewport(v_xmin, v_ymin, v_xmax, v_ymax);
 
+    update();
+}
+
+void MainWindow::on_pushButton_carregarDesenho_clicked()
+{
+    QString filePath = QFileDialog::getOpenFileName(this, "Abrir Desenho", "", "Arquivos de Texto (*.txt)");
+
+    if (filePath.isEmpty()) {
+        return;
+    }
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Erro", "Não foi possível abrir o arquivo selecionado.");
+        return;
+    }
+
+    QTextStream in(&file);
+    int contador_retas = 0;
+
+    QRegularExpression re("\\(\\s*([0-9.]+)\\s*,\\s*([0-9.]+)\\s*\\)\\s*\\(\\s*([0-9.]+)\\s*,\\s*([0-9.]+)\\s*\\)");
+
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        QRegularExpressionMatch match = re.match(line);
+
+        if (match.hasMatch()) {
+            QString x1_str = match.captured(1);
+            QString y1_str = match.captured(2);
+            QString x2_str = match.captured(3);
+            QString y2_str = match.captured(4);
+
+            double x1 = x1_str.toDouble();
+            double y1 = y1_str.toDouble();
+            double x2 = x2_str.toDouble();
+            double y2 = y2_str.toDouble();
+
+            Ponto p1(x1, y1);
+            Ponto p2(x2, y2);
+
+            QString nome = QString("Reta_arq_%1").arg(++contador_retas);
+
+            displayFile.append(new RetaGrafica(nome, p1, p2));
+        }
+    }
+
+    file.close();
+
+    atualizarListaObjetos();
     update();
 }

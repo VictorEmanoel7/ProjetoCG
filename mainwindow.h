@@ -5,6 +5,9 @@
 #include <QVector>
 #include <QMouseEvent>
 #include <QListWidgetItem>
+#include <QFileDialog>
+#include <QTextStream>
+#include <QRegularExpression>
 #include "objetografico.h"
 #include "transformador.h"
 #include "windowgrafica.h"
@@ -40,6 +43,7 @@ private slots:
     void on_pushButton_excluir_clicked();
     void on_listWidget_objetos_itemChanged(QListWidgetItem *item);
     void on_pushButton_aplicar_wv_clicked();
+    void on_pushButton_carregarDesenho_clicked();
 
 private:
     void atualizarListaObjetos();
